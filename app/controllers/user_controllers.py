@@ -1,18 +1,22 @@
 from app.models.user import User
 from sqlalchemy.orm import Session
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreate, UserUpdate
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
+from app.utils.security import hash_password
 
 
+# get all users
 def get_users(db: Session):
-    user = db.query(User).all()
+    return db.query(User).all()
+    # return {"message": "got all users", "users": user}
 
-    return {"message": "got all users", "users": user}
 
-
+# create new user
 def create_user(user: UserCreate, db: Session):
-    newuser = User(name=user.name, email=user.email)
+    hashed_password = hash_password(user.password)
+
+    newuser = User(name=user.name, email=user.email, password=hashed_password)
 
     try:
         db.add(newuser)
@@ -24,9 +28,10 @@ def create_user(user: UserCreate, db: Session):
     except IntegrityError:
         db.rollback()
 
-        raise HTTPException(status_code=422, detail="Email already exists")
+        raise HTTPException(status_code=409, detail="Email already exists")
 
 
+# get user by id
 def get_single_user(user_id: int, db: Session):
     user = db.query(User).filter(User.id == user_id).first()
 
@@ -36,7 +41,8 @@ def get_single_user(user_id: int, db: Session):
     return user
 
 
-def update_user(user: UserCreate, user_id: int, db: Session):
+# update user by id
+def update_user(user: UserUpdate, user_id: int, db: Session):
     getuser = db.query(User).filter(User.id == user_id).first()
 
     if not getuser:
@@ -53,9 +59,10 @@ def update_user(user: UserCreate, user_id: int, db: Session):
     except IntegrityError:
         db.rollback()
 
-        raise HTTPException(status_code=422, detail="Email already exists")
+        raise HTTPException(status_code=409, detail="Email already exists")
 
 
+# delete user by id
 def delete_user(user_id: int, db: Session):
     user = db.query(User).filter(user_id == User.id).first()
 
