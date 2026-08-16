@@ -9,8 +9,15 @@ from app.controllers.user_controllers import (
 )
 from app.database.database import get_db
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.models.user import User
+from app.utils.dependencies import get_current_user
 
 router = APIRouter()
+
+
+@router.get("/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
 
 
 @router.get("/", response_model=list[UserResponse])
