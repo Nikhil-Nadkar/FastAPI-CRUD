@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.controllers.user_controllers import (
     get_users,
@@ -11,6 +11,7 @@ from app.database.database import get_db
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.models.user import User
 from app.utils.dependencies import get_current_user
+from app.dependencies.auth import require_admin
 
 router = APIRouter()
 
@@ -36,10 +37,24 @@ def get_single_user_routes(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{user_id}")
-def delete_user_routes(user_id: int, db: Session = Depends(get_db)):
+def delete_user_routes(
+    user_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
     return delete_user(user_id, db)
 
 
 @router.put("/{user_id}", response_model=UserUpdate)
-def update_user_routes(user: UserCreate, user_id: int, db: Session = Depends(get_db)):
+def update_user_routes(
+    user: UserUpdate,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "admin" and current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to update this user",
+        )
     return update_user(user, user_id, db)
